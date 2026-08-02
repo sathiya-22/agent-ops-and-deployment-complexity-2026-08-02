@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  agent_worker:
+    build:
+      context: ./agent
+      dockerfile: Dockerfile
+    environment:
+      # Inject environment variables from the .env file
+      - AGENT_CONFIG_VALUE=${AGENT_CONFIG_VALUE}
+      # You would inject API keys here for your agent to use
+      # - GEMINI_API_KEY=${GEMINI_API_KEY}
+      # - MY_TOOL_API_KEY=${MY_TOOL_API_KEY}
+    # For a real agent, you might want restart policies
+    restart: on-failure
+    # If the agent exposed an HTTP API, you'd expose ports like this:
+    # ports:
+    #   - "8000:8000" # Example: agent listens on 8000 internally
+
+  nginx_proxy:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    ports:
+      - "${NGINX_HOST_PORT}:80" # Map host port to Nginx's internal port 80
+    environment:
+      # Pass Nginx specific environment variables for dynamic config if needed
+      - NGINX_SERVER_NAME=${NGINX_SERVER_NAME}
+      - NGINX_UPSTREAM_HOST=${NGINX_UPSTREAM_HOST}
+      - NGINX_UPSTREAM_PORT=${NGINX_UPSTREAM_PORT}
+    # Mount the custom Nginx configuration
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf
+    # Ensure Nginx starts after the agent worker (if agent had an HTTP API)
+    depends_on:
+      - agent_worker
+    restart: always
